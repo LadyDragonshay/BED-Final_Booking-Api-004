@@ -1,85 +1,90 @@
-import { Router } from "express";
-import getUsers from "../services/users/getUsers.js";
-import createUser from "../services/users/createUser.js";
-import getUserById from "../services/users/getUserById.js";
-import deleteUserById from "../services/users/deleteUserById.js";
-import updateUserById from "../services/users/updateUserById.js";
-import auth from "../middleware/auth.js";
+import { Router } from 'express';
+import authMiddleware from '../middleware/authMiddleware.js';
+import checkRequiredFields from '../middleware/checkRequiredFields.js';
+import jsonSchema from '../../prisma/json-schema/json-schema.json' with { type: 'json' };
+import getUsers from '../services/users/getUsers.js';
+import createUser from '../services/users/createUser.js';
+import getUserById from '../services/users/getUserById.js';
+import deleteUserById from '../services/users/deleteUserById.js';
+import updateUserById from '../services/users/updateUserById.js';
 
 const router = Router();
 
-router.get("/", async (req, res, next) => {
+// GET / - Fetch users based on query parameters
+router.get('/', async (req, res, next) => {
   try {
     const { username, email } = req.query;
     const users = await getUsers(username, email);
-
     res.status(200).json(users);
   } catch (error) {
     next(error);
   }
 });
 
-router.post("/", auth, async (req, res, next) => {
-  try {
-    const { username, password, name, email, phoneNumber, profilePicture } =
-      req.body;
-
-    // Validate required fields
-    if (
-      !username ||
-      !password ||
-      !name ||
-      !email ||
-      !phoneNumber ||
-      !profilePicture
-    ) {
-      return res.status(400).json({
-        message:
-          "All fields are required: username, password, name, email, phoneNumber, and profilePicture",
-      });
+// POST / - Create a new user
+router.post(
+  '/',
+  authMiddleware,
+  checkRequiredFields(jsonSchema.definitions.User.required),
+  async (req, res, next) => {
+    try {
+      const { username, password, name, email, phoneNumber, profilePicture } = req.body;
+      const newUser = await createUser(username, password, name, email, phoneNumber, profilePicture);
+      res.status(201).json(newUser);
+    } catch (error) {
+      next(error);
     }
-    
-    // Create a new user
-    const newUser = await createUser({
-      username,
-      password,
-      name,
-      email,
-      phoneNumber,
-      profilePicture,
-    });
-
-    // Respond with 201 Created
-    res.status(201).json({
-      message: "Account successfully created",
-      newUser,
-    });
-  } catch (err) {
-    next(err);
   }
-});
+);
 
-router.get("/:id", async (req, res, next) => {
+// GET /:id - Fetch a user by ID
+router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const user = await getUserById(id);
 
     if (!user) {
-      res.status(404).json({ message: `User with id ${id} was not found` });
-    } else {
-      res.status(200).json(user);
+      return res.status(404).json({ message: 'User not found' });
     }
-  } catch (err) {
-    next(err);
+
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
   }
 });
 
-router.put("/:id", auth, async (req, res, next) => {
+// DELETE /:id - Delete a user by ID
+router.delete('/:id', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { username, password, name, email, phoneNumber, profilePicture } =
-      req.body;
-    const user = await updateUserById(id, {
+
+    if (!id) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const deletedUserId = await deleteUser(id);
+
+    if (!deletedUserId) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(204).send(); // No content
+  } catch (error) {
+    next(error);
+  }
+});
+
+// PUT /:id - Update a user by ID
+router.put('/:id', authMiddleware, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const { username, password, name, email, phoneNumber, profilePicture } = req.body;
+    const updatedUser = await updateUserById(id, {
       username,
       password,
       name,
@@ -88,36 +93,13 @@ router.put("/:id", auth, async (req, res, next) => {
       profilePicture,
     });
 
-    if (!user || user.count === 0) {
-      res.status(404).json({
-        message: `User with id ${id} was not found`,
-      });
-    } else {
-      res.status(200).send({
-        message: `User with id ${id} successfully updated`,
-      });
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  } catch (err) {
-    next(err);
-  }
-});
 
-router.delete("/:id", auth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const user = await deleteUserById(id);
-
-    if (!user || user.count === 0) {
-      res.status(404).json({
-        message: `User with id ${id} was not found`,
-      });
-    } else {
-      res.status(200).send({
-        message: `User with id ${id} successfully deleted`,
-      });
-    }
-  } catch (err) {
-    next(err);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    next(error);
   }
 });
 

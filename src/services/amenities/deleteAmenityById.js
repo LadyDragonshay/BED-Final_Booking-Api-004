@@ -1,12 +1,25 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const deleteAmenityById = async (id) => {
+// If no matching amenity exists for the given id, throw a NotFoundError.
+// If it does, delete it.
+const deleteAmenityById = async id => {
   const prisma = new PrismaClient();
-  const amenity = await prisma.amenity.deleteMany({
-    where: { id },
+  const amenityFound = await prisma.amenity.findUnique({
+    where: {
+      id
+    }
   });
 
-  return amenity;
+  if (!amenityFound) {
+    throw new NotFoundError('amenity', id);
+  }
+
+  await prisma.amenity.delete({
+    where: {
+      id
+    }
+  });
 };
 
 export default deleteAmenityById;

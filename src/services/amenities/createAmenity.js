@@ -1,13 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
-const createAmenity = async (newAmenity) => {
+const createAmenity = async name => {
   const prisma = new PrismaClient();
-
-  const amenity = await prisma.amenity.create({
-    data: newAmenity,
+  const newAmenity = await prisma.amenity.create({
+    data: { name }
   });
 
-  return amenity;
+  return newAmenity;
 };
 
 export default createAmenity;

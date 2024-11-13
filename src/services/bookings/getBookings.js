@@ -1,11 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
-const getBookings = async (userId) => {
+const getBookings = async (userId, propertyId) => {
   const prisma = new PrismaClient();
   const bookings = await prisma.booking.findMany({
     where: {
-      ...(userId ? { userId: userId } : {}),
-    },
+      userId,
+      propertyId
+    }
   });
 
   return bookings;

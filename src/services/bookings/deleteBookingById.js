@@ -1,20 +1,25 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const deleteBookingById = async (id) => {
+// If no matching booking exists for the given id, throw a NotFoundError.
+// If it does, delete it.
+const deleteBookingById = async id => {
   const prisma = new PrismaClient();
-
-  try {
-    const booking = await prisma.booking.delete({
-      where: { id },
-    });
-    return booking;
-  } catch (error) {
-    if (error.code === "P2025") {
-      //The P2025 error in Prisma is a "Record to delete does not exist" error.
-      return null;
+  const bookingFound = await prisma.booking.findUnique({
+    where: {
+      id
     }
-    throw error;
+  });
+
+  if (!bookingFound) {
+    throw new NotFoundError('booking', id);
   }
+
+  await prisma.booking.delete({
+    where: {
+      id
+    }
+  });
 };
 
 export default deleteBookingById;

@@ -1,21 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const getPropertyById = async (id) => {
+// If a matching property exists for the given id, return it.
+// Otherwise, throw a NotFoundError.
+const getPropertyById = async id => {
   const prisma = new PrismaClient();
-  try {
-    const property = await prisma.property.findUnique({
-      where: { id: id.toString() },
-    });
-
-    if (!property) {
-      return null;
+  const property = await prisma.property.findUnique({
+    where: {
+      id
     }
+  });
 
-    return property;
-  } catch (error) {
-    console.error("Error in getPropertyById:", error);
-    throw error;
-  }
+  if (property) return property;
+
+  throw new NotFoundError('property', id);
 };
 
 export default getPropertyById;

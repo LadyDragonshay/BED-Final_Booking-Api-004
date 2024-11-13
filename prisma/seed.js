@@ -71,23 +71,15 @@ async function main() {
     // Seed properties
     console.log('Seeding properties...');
     await Promise.all(
-      properties.map(async (property) => {
-        await prisma.property.upsert({
+      properties.map((property) => {
+        const { amenityIds, ...propertyData } = property;
+        return prisma.property.upsert({
           where: { id: property.id },
           update: {},
           create: {
-            id: property.id,
-            title: property.title,
-            description: property.description,
-            location: property.location,
-            pricePerNight: property.pricePerNight,
-            bedroomCount: property.bedroomCount,
-            bathRoomCount: property.bathRoomCount,
-            maxGuestCount: property.maxGuestCount,
-            rating: property.rating,
-            hostId: property.hostId,
+            ...propertyData,
             amenities: {
-              connect: property.amenityIds?.map((id) => ({ id })) || []
+              connect: amenityIds?.map((id) => ({ id })) || []
             },
           },
         });
@@ -127,7 +119,12 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
 });

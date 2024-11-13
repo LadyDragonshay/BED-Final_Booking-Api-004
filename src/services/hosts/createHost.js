@@ -1,21 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
-const createHost = async (newHost) => {
+const createHost = async (
+  username,
+  password,
+  name,
+  email,
+  phoneNumber,
+  profilePicture,
+  aboutMe
+) => {
   const prisma = new PrismaClient();
-  try {
-    const timestamp = Date.now();
-    const host = await prisma.host.create({
-      data: {
-        ...newHost,
-        username: `${timestamp}_${newHost.username}`, 
-        email: `${timestamp}_${newHost.email}`, 
-      },
-    });
-    return host;
-  } catch (error) {
-    console.error("Error creating host:", error);
-    throw error;
-  }
+  const newHost = await prisma.host.create({
+    data: {
+      username,
+      password,
+      name,
+      email,
+      phoneNumber,
+      profilePicture,
+      aboutMe
+    }
+  });
+
+  return newHost;
 };
 
 export default createHost;

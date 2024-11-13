@@ -1,12 +1,19 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const getUserById = async (id) => {
+// If a matching user exists for the given id, return it.
+// Otherwise, throw a NotFoundError.
+const getUserById = async id => {
   const prisma = new PrismaClient();
   const user = await prisma.user.findUnique({
-    where: { id },
+    where: {
+      id
+    }
   });
 
-  return user;
+  if (user) return user;
+
+  throw new NotFoundError('user', id);
 };
 
 export default getUserById;

@@ -1,31 +1,43 @@
 import { PrismaClient } from "@prisma/client";
 
-const getProperties = async (location, pricePerNight) => {
-  let prisma;
+const prisma = new PrismaClient();
 
+const getProperties = async (hostId, location, priceRange, amenities) => {
   try {
-    prisma = new PrismaClient();
-
-    const prismaFilters = {
-      location,
-      pricePerNight,
-    };
-
-    console.log("Executing query with filters:", prismaFilters);
-
     const properties = await prisma.property.findMany({
-      where: prismaFilters,
+      where: {
+        ...(hostId && { hostId }),
+        ...(location && {
+          location: { contains: location, mode: "insensitive" },
+        }),
+        ...(priceRange && {
+          pricePerNight: {
+            gte: priceRange.min,
+            lte: priceRange.max,
+          },
+        }),
+        ...(amenities &&
+          amenities.length > 0 && {
+            amenities: {
+              some: {
+                name: {
+                  in: amenities,
+                },
+              },
+            },
+          }),
+      },
+      include: {
+        amenities: true,
+      },
     });
-
-    console.log("Received filter criteria:", prismaFilters);
-    console.log("Query result:", properties);
 
     return properties;
   } catch (error) {
-    console.error("Error in getProperties service:", error.message);
-    throw new Error(`Error in getProperties service: ${error.message}`);
+    console.error("Error fetching properties:", error);
+    throw error;
   } finally {
-    await prisma?.$disconnect();
+    await prisma.$disconnect();
   }
 };
 

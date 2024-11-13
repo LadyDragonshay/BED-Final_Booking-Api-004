@@ -1,74 +1,100 @@
-const errorHandler = (err, req, res, next) => {
-  // Log the error to the console for debugging
-  console.error(err);
+import { PrismaClient } from "@prisma/client";
 
-  // If response headers have already been sent, delegate the error further.
+const prisma = new PrismaClient();
+
+const errorHandler = async (err, req, res, next) => {
+  console.error(err); // Log the error for debugging
+
+  // If headers have already been sent, delegate to the default error handler
   if (res.headersSent) {
     return next(err);
   }
 
-  // Default status is 500 (Internal Server Error)
-  err.status = err.status || 500;
+  // Set default status to 500 (Internal Server Error)
+  res.status(500);
+  const isProduction = process.env.NODE_ENV === "production";
 
-  // Handling PrismaClientKnownRequestError
+  // Determine the error message based on the environment
+  const errorMessage = isProduction
+    ? "An unexpected error occurred."
+    : err.message;
+
+  // Handle PrismaClientKnownRequestError
   if (err.name === "PrismaClientKnownRequestError") {
     switch (err.code) {
-      // Bad request errors (400)
-      case "P2000": //"The provided value for the column is too long for the column's type. Column: {column_name}"
-      case "P2003": //"Foreign key constraint failed on the field: {field_name}"
-      case "P2004": //"A constraint failed on the database: {database_error}"
-      case "P2005": //"The value {field_value} stored in the database for the field {field_name} is invalid for the field's type"
-      case "P2006": //"The provided value {field_value} for {model_name} field {field_name} is not valid"
-      case "P2007": //"Data validation error {database_error}"
-      case "P2008": //"Failed to parse the query {query_parsing_error} at {query_position}"
-      case "P2009": //"Failed to validate the query: {query_validation_error} at {query_position}"
-      case "P2010": //"Raw query failed. Code: {code}. Message: {message}"
-      case "P2011": //"Null constraint violation on the {constraint}"
-      case "P2012": //"Missing a required value at {path}"
-      case "P2013": //"Missing the required argument {argument_name} for field {field_name}"
-      case "P2014": //"The change you are trying to make would violate the required relation"
-      case "P2016": //"Query interpretation error. {details}"
-      case "P2017": //"The records for relation {relation_name} are not connected."
-      case "P2019": //"Input error. {details}"
-      case "P2020": //"Value out of range for the type. {details}"
-      case "P2023": //"Inconsistent column data: {message}"
-      case "P2026": //"Database provider does not support a feature used in the query"
+      // Bad request (400)
+      case "P2000": // Value too long for column type
+      case "P2003": // Foreign key constraint failed
+      case "P2004": // Constraint failed on database
+      case "P2005": // Invalid value for field type
+      case "P2006": // Invalid value for field
+      case "P2007": // Data validation error
+      case "P2008": // Query parsing error
+      case "P2009": // Query validation error
+      case "P2010": // Raw query failed
+      case "P2011": // Null constraint violation
+      case "P2012": // Missing required value
+      case "P2013": // Missing required argument
+      case "P2014": // Relation violation
+      case "P2016": // Query interpretation error
+      case "P2017": // Disconnected relation
+      case "P2019": // Input error
+      case "P2020": // Value out of range
+      case "P2023": // Inconsistent column data
+      case "P2026": // Unsupported feature by the provider
         err.status = 400;
         break;
 
-      // Not found errors (404)
-      case "P2001": //"The record searched for does not exist"
-      case "P2015": //"A related record could not be found"
-      case "P2018": //"The required connected records were not found"
-      case "P2021": //"The table does not exist in the current database"
-      case "P2022": //"The column does not exist in the current database"
-      case "P2025": //"An operation failed due to missing required records"
+      // Not found (404)
+      case "P2001": // Record not found
+      case "P2015": // Related record not found
+      case "P2018": // Connected records not found
+      case "P2021": // Table not found
+      case "P2022": // Column not found
+      case "P2025": // Missing required records
         err.status = 404;
         break;
 
-      // Conflict errors (409)
-      case "P2002": //"Unique constraint failed"
+      // Conflict (409)
+      case "P2002": // Unique constraint failed
         err.status = 409;
         break;
 
-      // Internal server errors (500)
+      // Default to internal server error (500)
       default:
         err.status = 500;
     }
   }
 
-  // Handling PrismaClientValidationError
+  // Handle PrismaClientValidationError
   if (err.name === "PrismaClientValidationError") {
     err.status = 400;
   }
 
-  // Send JSON response with error status and message
-  res.status(err.status).json({
-    message: err.message || "Something went wrong!",
-  });
+  // Handle other known errors (e.g., validation errors from Express Validator)
+  if (err.errors && Array.isArray(err.errors)) {
+    err.status = 400;
+    const validationErrors = err.errors.map((e) => e.msg).join(", ");
+    return res.status(400).json({
+      status: 400,
+      message: validationErrors,
+      code: "VALIDATION_ERROR",
+      details: err.errors,
+    });
+  }
 
-  // Call next to pass the error further if needed
-  next();
+  // Disconnect Prisma Client if a Prisma error occurred
+  if (err.name && err.name.startsWith("Prisma")) {
+    await prisma.$disconnect();
+  }
+
+  // Send a structured JSON error response
+  //res.status(err.status).json({
+  //status: err.status,
+  //message: errorMessage,
+  //code: err.code || "INTERNAL_ERROR",
+  //details: !isProduction ? err.meta || err.stack : null,
+  //});
 };
 
 export default errorHandler;

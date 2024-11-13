@@ -1,14 +1,29 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const updateAmenityById = async (id, updatedAmenity) => {
+const updateAmenityById = async (id, { name }) => {
   const prisma = new PrismaClient();
 
-  const amenity = await prisma.amenity.updateMany({
-    where: { id },
-    data: updatedAmenity,
+  // If no matching amenity exists for the given id, throw a NotFoundError.
+  const amenityFound = await prisma.amenity.findUnique({
+    where: {
+      id
+    }
   });
 
-  return amenity;
+  if (!amenityFound) {
+    throw new NotFoundError('amenity', id);
+  }
+
+  // Update the amenity and return it.
+  const updatedAmenity = await prisma.amenity.update({
+    where: {
+      id
+    },
+    data: { name }
+  });
+
+  return updatedAmenity;
 };
 
 export default updateAmenityById;

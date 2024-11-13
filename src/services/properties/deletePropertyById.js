@@ -1,19 +1,25 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const deletePropertyById = async (id) => {
+// If no matching property exists for the given id, throw a NotFoundError.
+// If it does, delete it.
+const deletePropertyById = async id => {
   const prisma = new PrismaClient();
-
-  try {
-    const property = await prisma.property.delete({
-      where: { id },
-    });
-    return property;
-  } catch (error) {
-    if (error.code === "P2025") {
-      return null;
+  const propertyFound = await prisma.property.findUnique({
+    where: {
+      id
     }
-    throw error;
+  });
+
+  if (!propertyFound) {
+    throw new NotFoundError('property', id);
   }
+
+  await prisma.property.delete({
+    where: {
+      id
+    }
+  });
 };
 
 export default deletePropertyById;

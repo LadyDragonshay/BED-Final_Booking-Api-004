@@ -4,18 +4,19 @@ import dotenv from "dotenv";
 import * as Sentry from "@sentry/node";
 
 // Import routes
+import userRoutes from "./routes/users.js";
+import hostRoutes from "./routes/hosts.js";
+import propertyRoutes from "./routes/properties.js";
 import amenityRoutes from "./routes/amenities.js";
 import bookingRoutes from "./routes/bookings.js";
-import hostRoutes from "./routes/hosts.js";
-import loginRouter from "./routes/login.js";
-import propertyRoutes from "./routes/properties.js";
 import reviewRoutes from "./routes/reviews.js";
-import userRoutes from "./routes/users.js";
+import loginRouter from "./routes/login.js";
+import NotFoundError from "./errors/NotFoundError.js";
 
 // Import middleware
 import errorHandler from "./middleware/errorHandler.js";
 import logMiddleware from "./middleware/logMiddleware.js";
-import auth from "./middleware/auth.js";
+import authMiddleware from "./middleware/authMiddleware.js";
 
 // Initialize environment variables
 dotenv.config();

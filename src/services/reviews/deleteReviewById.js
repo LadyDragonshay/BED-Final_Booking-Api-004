@@ -1,19 +1,25 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import NotFoundError from '../../errors/NotFoundError.js';
 
-const deleteReviewById = async (id) => {
+// If no matching review exists for the given id, throw a NotFoundError.
+// If it does, delete it.
+const deleteReviewById = async id => {
   const prisma = new PrismaClient();
-
-  try {
-    const review = await prisma.review.delete({
-      where: { id },
-    });
-    return review;
-  } catch (error) {
-    if (error.code === "P2025") {
-      return null;
+  const reviewFound = await prisma.review.findUnique({
+    where: {
+      id
     }
-    throw error;
+  });
+
+  if (!reviewFound) {
+    throw new NotFoundError('Review', id);
   }
+
+  await prisma.review.delete({
+    where: {
+      id
+    }
+  });
 };
 
 export default deleteReviewById;

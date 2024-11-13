@@ -12,6 +12,7 @@ const createUser = async (
   // Create the new user and return it.
   const newUser = await prisma.user.create({
     data: {
+      id: uuid(),
       username,
       password,
       name,
@@ -21,6 +22,7 @@ const createUser = async (
     },
   });
 
+  userData.users.push(newUser);
   return newUser;
 };
 

@@ -1,14 +1,16 @@
-import { Router } from "express";
-import getAmenities from "../services/amenities/getAmenities.js";
-import createAmenity from "../services/amenities/createAmenity.js";
-import getAmenityById from "../services/amenities/getAmenityById.js";
-import deleteAmenityById from "../services/amenities/deleteAmenityById.js";
-import updateAmenityById from "../services/amenities/updateAmenityById.js";
-import auth from "../middleware/auth.js";
+import { Router } from 'express';
+import authMiddleware from '../middleware/authMiddleware.js';
+import checkRequiredFields from '../middleware/checkRequiredFields.js';
+import jsonSchema from '../../prisma/json-schema/json-schema.json' with { type: 'json' };
+import getAmenities from '../services/amenities/getAmenities.js';
+import createAmenity from '../services/amenities/createAmenity.js';
+import getAmenityById from '../services/amenities/getAmenityById.js';
+import deleteAmenityById from '../services/amenities/deleteAmenityById.js';
+import updateAmenityById from '../services/amenities/updateAmenityById.js';
 
 const router = Router();
 
-router.get("/", async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const amenities = await getAmenities();
 
@@ -18,77 +20,71 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.post("/", auth, async (req, res, next) => {
-  try {
-    const { name } = req.body;
+router.post(
+  '/',
+  authMiddleware,
+  checkRequiredFields(jsonSchema.definitions.Amenity.required),
+  async (req, res, next) => {
+    try {
+      const { name } = req.body;
+      const newAmenity = await createAmenity(name);
 
-    if (!name) {
-      return res.status(400).send({
-        message: "All fields are required: name",
-      });
+      res.status(201).json(newAmenity);
+    } catch (error) {
+      next(error);
     }
-
-    const newAmenity = await createAmenity({ name });
-    res.status(201).send({
-      message: `Account succesfully created`,
-      newAmenity,
-    });
-  } catch (err) {
-    next(err);
   }
-});
+);
 
-router.get("/:id", async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const amenity = await getAmenityById(id);
 
-    if (!amenity) {
-      res.status(404).json({ message: `Amenity with id ${id} was not found` });
-    } else {
-      res.status(200).json(amenity);
-    }
-  } catch (err) {
-    next(err);
+    res.status(200).json(amenity);
+  } catch (error) {
+    next(error);
   }
 });
 
-router.put("/:id", auth, async (req, res, next) => {
+router.delete('/:id?', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
-    const amenity = await updateAmenityById(id, { name });
 
-    if (!amenity || amenity.count === 0) {
-      res.status(404).json({
-        message: `Amenity with id ${id} was not found`,
+    if (id) {
+      await deleteAmenityById(id);
+
+      res.status(200).json({
+        message: `Amenity with id ${id} was successfully deleted!`
       });
     } else {
-      res.status(200).send({
-        message: `Amenity with id ${id} successfully updated`,
+      res.status(400).json({
+        message: 'No id has been given!'
       });
     }
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-router.delete("/:id", auth, async (req, res, next) => {
+router.put('/:id?', authMiddleware, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const amenity = await deleteAmenityById(id);
 
-    if (!amenity || amenity.count === 0) {
-      res.status(404).json({
-        message: `Amenity with id ${id} was not found`,
+    if (id) {
+      const { name } = req.body;
+      const updatedAmenity = await updateAmenityById(id, {
+        name
       });
+
+      res.status(200).json(updatedAmenity);
     } else {
-      res.status(200).send({
-        message: `Amenity with id ${id} successfully deleted`,
+      res.status(400).json({
+        message: 'No id has been given!'
       });
     }
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
